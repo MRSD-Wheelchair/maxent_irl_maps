@@ -39,7 +39,13 @@ def load_net_for_eval(model_fp, device='cuda', skip_mpc=True,):
     param_fp = os.path.join(model_base_dir, "_params.yaml")
     dummy_dataset_fp = os.path.join(model_base_dir, 'dummy_dataset')
     config = yaml.safe_load(open(param_fp, 'r'))
-    config['dataset']['params']['root_fp'] = dummy_dataset_fp
+
+    # Support both old (params) and new (common) config formats
+    if 'params' in config['dataset']:
+        config['dataset']['params']['root_fp'] = dummy_dataset_fp
+    elif 'common' in config['dataset']:
+        config['dataset']['common']['root_dir'] = dummy_dataset_fp
+
     res = setup_experiment(config, skip_mpc=skip_mpc)["algo"].to(device)
 
     res.network.load_state_dict(torch.load(model_fp, weights_only=True))

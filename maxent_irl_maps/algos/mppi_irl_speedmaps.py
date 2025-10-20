@@ -268,7 +268,7 @@ class MPPIIRLSpeedmaps:
         """
         inp = {
             'state': dpt["odometry"]["data"],
-            'steer_angle': dpt["steer_angle"]["data"].unsqueeze(-1)
+            #'steer_angle': dpt["steer_angle"]["data"].unsqueeze(-1)
         }
         return self.mppi.model.get_observations(inp)
 

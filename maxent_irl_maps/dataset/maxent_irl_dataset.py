@@ -16,10 +16,10 @@ class MaxEntIRLDataset(PerceptionDataset):
 
         ## only assert these two because the perception inputs can change
         assert 'odometry' in self.dataloaders.keys(), "Expect 'odometry to be a data key'"
-        assert 'steer_angle' in self.dataloaders.keys(), "Expect 'steer_angle to be a data key'"
+        #assert 'steer_angle' in self.dataloaders.keys(), "Expect 'steer_angle to be a data key'"
         assert 'tsample' in self.dataloaders['odometry'].keys(), "Need to forward sample odometry for IRL"
-        assert 'tsample' in self.dataloaders['steer_angle'].keys(), "Need to forward sample steer angle for IRL"
-        assert (self.dataloaders['odometry']['tsample'] == self.dataloaders['steer_angle']['tsample']).all()
+        #assert 'tsample' in self.dataloaders['steer_angle'].keys(), "Need to forward sample steer angle for IRL"
+       # assert (self.dataloaders['odometry']['tsample'] == self.dataloaders['steer_angle']['tsample']).all()
 
         self.min_speed = config['irl']['min_speed']
         self.sample_every = config['irl']['sample_every']
@@ -49,7 +49,7 @@ class MaxEntIRLDataset(PerceptionDataset):
             speed_seg = speeds[speed_seg_idxs]
 
             avg_speed = speed_seg.mean(dim=-1)
-            valid_idxs = torch.argwhere(avg_speed > self.min_speed).squeeze()
+            valid_idxs = torch.argwhere(avg_speed >= self.min_speed).squeeze() #TODO
 
             valid_idxs = valid_idxs[::self.sample_every]
 

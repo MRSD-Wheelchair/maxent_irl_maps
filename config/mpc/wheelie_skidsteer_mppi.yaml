@@ -1,0 +1,168 @@
+---
+common:
+    B: 1           #number of optimizations to run in parallel
+    H: 30          #number of timesteps to roll out
+    # H: 75
+    M: 2           #dim of action space
+    dt: 0.2        #length of timestep
+    device: cuda    #device to run on 
+    compile: false #add
+
+model:
+    type: SkidSteer
+    args:
+        v_lim: [0, 0.8]
+        w_lim: [-0.3, 0.3]
+
+
+    actuator_delay: [0, 0] #num timesteps to delay controls
+
+sampling_strategies:
+    strategies:
+        - type: ActionLibrary
+          label: action_library
+          args:
+            K: 100
+            path: "/home/tartandriver/tartandriver_ws/src/control/torch_mpc/data/action_libraries/yamaha_atv/H75_throttle_steer_unif.pt"
+
+#        - type: UniformGaussian
+#          label: gaussian_unif
+#          args:
+#            K: 512
+#            scale: [1.0, 0.2]
+
+        # - type: GaussianWalk
+        #   label: gaussian_walk
+        #   args:
+        #     K: 512
+        #     initial_distribution:
+        #         type: gaussian
+        #         scale: [0.5, 0.0]
+        #     alpha: [0.0, 0.0]   #low-pass on noise
+        #     scale: [0.005, 0.005]  #sample scale on change of noise
+        - type: GaussianWalk
+          label: gaussian_walk
+          args:
+            K: 512
+            initial_distribution:
+                type: gaussian
+                scale: [0.5, 0.0]
+            alpha: [1.0, 1.0]   #low-pass on noise
+            scale: [0.05, 0.05]  #sample scale on change of noise
+
+cost_function:
+    footprint: #add
+      key: footprint_trajs
+      args:
+        length: 1.0
+        width: 1.0
+
+        #displacement to get to the center of the footprint from the center of the rear axle
+        length_offset: -0.0
+        width_offset: 0.0
+
+        nl: 5
+        nw: 5
+    terms:
+        # - type: FootprintSpeedmapProjection
+        #   weight: 0.0703
+        #   label: speedmap_projection
+        #   args:
+        #     speedmap_key: local_navmap #should match the name in the ros section
+        #     feature_key: speed #should match a feature key in the ros section
+        #     speed_margin: 2.0
+        #     speed_max_cost: 1000000000.0 #//here
+        #     length: 3.0
+        #     width: 1.5
+        #     length_offset: -1.0
+        #     width_offset: 0.0
+        #     nl: 5
+        #     nw: 5
+
+        # #smaller footprint for constraint
+        - type: FootprintCostmapProjection
+          weight: 0.001
+          label: costmap_constraint_projection
+          args:
+            costmap_key: local_navmap #should match the name in the ros section
+            feature_key: cost #should match a feature key in the ros section
+        #     #length: 0.5
+        #     #width: 0.5
+        #     #length_offset: 0.0
+        #     #width_offset: 0.0
+        #     footprint_key: footprint_trajs
+            cost_thresh: 0.8
+        #     # cost_thresh: 15.0
+
+        #full footprint for cost eval
+        - type: FootprintCostmapProjection
+          weight: 2.0
+          label: costmap_projection
+          args:
+            costmap_key: local_navmap #should match the name in the ros section
+            feature_key: cost #should match a feature key in the ros section
+            footprint_key: footprint_trajs
+            cost_thresh: 0.8 #q995
+            #length: 1
+            #width: 1
+            #length_offset: -1.0
+            #width_offset: 0.0
+           # nl: 5
+            #nw: 5
+
+        # - type: SpeedLimit
+        #   label: speed_limit
+        #   weight: 2.0
+        #   args:
+        #     target_speed: 0.5
+        #     max_speed: 2.0
+
+        # - type: GoalConstraint
+        #   goal_key: waypoints
+        #   weight: 0.001
+        #   args:
+
+        - type: EuclideanDistanceToGoal
+          label: dist_to_goal
+          goal_key: waypoints
+          weight: 5.0
+          args:
+              goal_radius: 2.0
+
+# this defines what the MPPI node subscribes to
+ros:
+    max_age: 5.
+
+    topics:
+      - name: state
+        topic: /zed/map_frame_odom #/zed/map_frame_odom
+        type: OdomRBState
+        args: {}
+
+      - name: steer_angle # output fake one
+        topic: /talon/current_position
+        type: Float32
+        args: {}
+
+      - name: pitch # output fake one
+        topic: /gps_pitch
+        type: Float32
+        args: {}
+
+      - name: local_navmap
+        topic: /local_navmap
+        type: BEVGrid
+        args: {}
+
+      - name: waypoints
+        topic: /next_waypoints/odom
+        type: GoalArray
+        args: {}
+
+
+update_rule:
+    type: MPPI
+    args:
+        temperature: 0.1
+        
+recovery_behavior: []
