@@ -38,15 +38,15 @@ def load_net_for_eval(model_fp, device='cuda', skip_mpc=True,):
     model_base_dir = os.path.split(model_fp)[0]
     param_fp = os.path.join(model_base_dir, "_params.yaml")
     dummy_dataset_fp = os.path.join(model_base_dir, 'dummy_dataset')
-    config = yaml.safe_load(open(param_fp, 'r'))
+    # config = yaml.safe_load(open(param_fp, 'r'))
 
     # Support both old (params) and new (common) config formats
-    if 'params' in config['dataset']:
-        config['dataset']['params']['root_fp'] = dummy_dataset_fp
-    elif 'common' in config['dataset']:
-        config['dataset']['common']['root_dir'] = dummy_dataset_fp
+    # if 'params' in config['dataset']:
+    #     config['dataset']['params']['root_fp'] = dummy_dataset_fp
+    # elif 'common' in config['dataset']:
+    #     config['dataset']['common']['root_dir'] = dummy_dataset_fp
 
-    res = setup_experiment(config, skip_mpc=skip_mpc)["algo"].to(device)
+    res = setup_experiment(param_fp, skip_mpc=skip_mpc)["algo"].to(device)
 
     res.network.load_state_dict(torch.load(model_fp, weights_only=True))
     res.network.eval()
@@ -104,13 +104,23 @@ def setup_experiment(fp, skip_mpc=False, skip_norms=False):
     # setup network
     network_params = experiment_dict["network"]
 
-    sample_dpt = res["dataset"][0]
-    bev_fks = sample_dpt["bev_data"]["feature_keys"]
+    if isinstance(fp, str) and os.path.exists(os.path.join(os.path.dirname(fp), "dummy_dataset", "normalizations.yaml")):
+        with open(os.path.join(os.path.dirname(fp), "dummy_dataset", "normalizations.yaml"), "r") as f:
+            normalizations = yaml.safe_load(f)
 
-    if skip_norms:
-        bev_normalizations = res["dataset"].compute_normalizations("bev_data", max_n_dpts=1)
+        bev_fks = normalizations["feature_keys"]
+        bev_normalizations = {
+            "mean": torch.tensor(normalizations["feature_mean"], device=device),
+            "std": torch.tensor(normalizations["feature_std"], device=device),
+        }
     else:
-        bev_normalizations = res["dataset"].compute_normalizations("bev_data")
+        sample_dpt = res["dataset"][0]
+        bev_fks = sample_dpt["bev_data"]["feature_keys"]
+
+        if skip_norms:
+            bev_normalizations = res["dataset"].compute_normalizations("bev_data", max_n_dpts=1)
+        else:
+            bev_normalizations = res["dataset"].compute_normalizations("bev_data")
 
     if network_params["type"] ==  "BEVToCostSpeed":
         res["network"] = BEVToCostSpeed(

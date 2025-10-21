@@ -66,7 +66,7 @@ class MPPIIRLSpeedmaps:
 
         print(self.network)
         print("({} params)".format(sum([x.numel() for x in self.network.parameters()])))
-        print(expert_dataset[0]["bev_data"]["feature_keys"])
+        # print(expert_dataset[0]["bev_data"]["feature_keys"])
         self.network_opt = opt
 
         self.batch_size = batch_size
