@@ -1,16 +1,22 @@
 experiment:
+    # where to save the model
     save_to: /home/tartandriver/tartandriver_ws/workspace/experiments/irl
     name: irl_example
+
     device: cuda
+    # number of epochs
     epochs: 10
+    # number of steps per epoch
     steps_per_epoch: -1
+    # save every n epochs
     save_every: 1
 
+# robot footprint, no need to change
 footprint:
     params: # from wheelie_skidsteer_mppi
         length: 1.0
         width: 1.0
-            
+
         #displacement to get to the center of the footprint from the center of the rear axle
         length_offset: -0.0
         width_offset: 0.0
@@ -21,20 +27,18 @@ footprint:
 algo:
     type: MPPIIRLSpeedmaps
     params:
-        batch_size: 24
+        batch_size: 24 # number of trajectories per batch
         reg_coeff: 2.0e-08 # for the overall cost of the cost maps, the higher the cost will be lower
-        speed_coeff: 0.0
-        grad_clip: 10.0
+        speed_coeff: 0.0 # no need to change, we are not training the speed maps
+        grad_clip: 10.0 # gradient clipping
 
-#TODO nest configs
 dataset:
     irl:
         min_speed: 0.0 # 1.0 #check the mini speed per second? (there will be 0 data point)
-        sample_every: 10 # 1
+        sample_every: 10 # sample every n-th frame
 
     common:
-        root_dir: /home/tartandriver/rosbags/irl_kitti_mixed2
-        
+        root_dir: /home/tartandriver/rosbags/irl_kitti_mixed2        
         device: cuda
         use_multiprocessing: false
 
@@ -44,7 +48,7 @@ dataset:
             dir: bev_map_radio
             
             args:
-                remove_keys: [min_elevation, max_elevation, terrain]
+                remove_keys: [min_elevation, max_elevation, terrain] # layers to be removed
 
         odometry:
             dtype: OdomRBState
@@ -55,14 +59,12 @@ dataset:
 
         image:
             dtype: Image
-            #dir: image
             dir: image_rect_color
 
             args: {}
 
         image_intrinsics:
             dtype: Intrinsics
-            #dir: image_intrinsics
             dir: camera_info
 
             args: {}
@@ -72,13 +74,13 @@ network:
 
     args:
         resnet_params:
-            hidden_channels: [128]
+            hidden_channels: [128] # hidden channels for the resnet
             hidden_activation: relu
 
         cost_params:
             type: Categorical
             output_params:
-                bounds: [0., 2.] #5
+                bounds: [0., 2.]
                 nbins: 20
 
             net_params:
@@ -90,7 +92,7 @@ network:
             output_params:
                 bounds: [0., 15.]
                 nbins: 15
-                
+
             net_params:
                 hidden_channels: []
                 hidden_activation: relu
@@ -101,6 +103,7 @@ netopt:
         lr: 0.001
         weight_decay: 0.0001
 
+# planner config, recommended not to change
 solver:
     type: mpc
     mpc_fp: /home/tartandriver/tartandriver_ws/src/planning/maxent_irl_maps/config/mpc/wheelie_skidsteer_mppi.yaml
