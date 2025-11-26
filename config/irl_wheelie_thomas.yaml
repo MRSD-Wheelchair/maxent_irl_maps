@@ -1,0 +1,156 @@
+experiment:
+    save_to: /home/tartandriver/tartandriver_ws/workspace/experiments/wheelie_irl_dino/
+    #name: irl_skidsteer_T150_DistanceToGoal50_ALwheelieH150K100A_mixdata2
+    #name: irl_skidsteer_T75_DistanceToGoal50_ALwheelieH75K100A_mixdata2
+    #name: irl_skidsteer_T150_DistanceToGoal50_ALwheelieH150K100unif_mixdata2_test
+    #name: irl_skidsteer_T150_DistanceToGoal50_ALyamahaH300K100unif_mixdata2
+    #name: irl_skidsteer_T150_DistanceToGoal50_ALwheelieH300K224unif_mixdata2
+    #name: irl_skidsteer_T150_DistanceToGoal50_ALwheelieH300K100A_mixdata2
+    name: irl_skidsteer_T100_DistanceToGoal50_ALwheelieH300K100A_mixdata2_1111_7
+    device: cuda
+    epochs: 32
+    steps_per_epoch: -1
+    save_every: 2
+
+footprint:
+    # params:
+    #     length: 4.0
+    #     width: 2.0
+          
+    #     #displacement to get to the center of the footprint from the center of the rear axle
+    #     length_offset: 1.2
+    #     width_offset: 0.0
+        
+    #     nl: 25
+    #     nw: 15
+    params: # from wheelie_skidsteer_mppi
+        length: 1.0
+        width: 1.0
+            
+        #displacement to get to the center of the footprint from the center of the rear axle
+        length_offset: -0.0
+        width_offset: 0.0
+        
+        nl: 5
+        nw: 5
+
+algo:
+    type: MPPIIRLSpeedmaps
+    params:
+        batch_size: 4
+        #reg_coeff: 0.0000001 #what is this?
+        reg_coeff: 0.0000002 #what is this?
+        #reg_coeff: 0.0 #turn off speedmaps for now
+        speed_coeff: 0.0
+        grad_clip: 10.0
+
+#TODO nest configs
+dataset:
+    irl:
+        min_speed: 0.0 # 1.0 #check the mini speed per second? (there will be 0 data point)
+        sample_every: 10 # 1
+
+    common:
+        # root_dir: /media/airlab/ssd1/2025_irl_kitti/train
+        #root_dir: /media/airlab/offroad/datasets/2025_irl_kitti/train
+        #root_dir: /home/tartandriver/rosbags/irl_kitti_tf
+        root_dir: /home/tartandriver/rosbags/irl_kitti_mixed2
+        
+        device: cuda
+        use_multiprocessing: false
+
+    datatypes:
+        bev_data:
+            dtype: BEVGrid
+            dir: bev_map_reduce
+            
+            args:
+                remove_keys: [min_elevation, max_elevation, terrain]
+
+        odometry:
+            dtype: OdomRBState
+            #dir: odometry
+            dir: odom
+            #temporal_sample: [0, 76] #TODO
+            temporal_sample: [0, 100] #TODO
+
+            args: {}
+
+        # steer_angle:
+        #     dtype: Float32
+        #     dir: steer_angle
+        #     temporal_sample: [0, 76]
+
+        #     args: {}
+
+        # feature_image:
+        #     dtype: FeatureImage
+        #     dir: feature_image
+
+        #     args: {}
+
+        # feature_image_intrinsics:
+        #     dtype: Intrinsics
+        #     dir: feature_image_intrinsics
+
+        #     args: {}
+
+        image:
+            dtype: Image
+            #dir: image
+            dir: image_rect_color
+
+            args: {}
+
+        image_intrinsics:
+            dtype: Intrinsics
+            #dir: image_intrinsics
+            dir: camera_info
+
+            args: {}
+
+    # transforms:
+    #     tf_odom_to_cam:
+    #         src_data: image
+    #         src_frame: sensor_init
+    #         dst_frame: multisense/left_camera_optical_frame
+
+network:
+    type: BEVToCostSpeed
+
+    args:
+        resnet_params:
+            hidden_channels: [128,]
+            hidden_activation: relu
+
+        cost_params:
+            type: Categorical
+            output_params:
+                bounds: [0., 2.] #5
+                nbins: 20
+
+            net_params:
+                hidden_channels: []
+                hidden_activation: relu
+
+        speed_params:
+            type: Categorical
+            output_params:
+                bounds: [0., 15.]
+                nbins: 15
+                
+            net_params:
+                hidden_channels: []
+                hidden_activation: relu
+
+netopt:
+    type: Adam
+    params: 
+        lr: 0.001 #0.0001 #0.001
+        weight_decay: 0.0001
+
+solver:
+    type: mpc
+    mpc_fp: /home/tartandriver/tartandriver_ws/src/planning/maxent_irl_maps/config/mpc/wheelie_skidsteer_mppi_thomas.yaml
+
+    #model_fp: /home/tartandriver/tartandriver_ws/models/maxent_irl_maps/yamaha/2025-01-25-16-42-26_radio_gascola_cexp/itr_5.pt

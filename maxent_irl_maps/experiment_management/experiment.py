@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 from datetime import datetime
 import matplotlib.pyplot as plt
+from torch.utils.tensorboard import SummaryWriter
 
 from maxent_irl_maps.os_utils import maybe_mkdir
 
@@ -24,6 +25,7 @@ class Experiment:
         steps_per_epoch=-1,
         save_every=10,
         device="cpu",
+        use_tensorboard=False,
     ):
         self.algo = algo
         self.name = "{}_{}".format(datetime.now().strftime("%Y-%m-%d-%H-%M-%S"), name)
@@ -34,6 +36,8 @@ class Experiment:
         self.save_every = save_every
         self.device = device
         self.params = params
+        self.use_tensorboard = use_tensorboard
+        self.writer = None
 
     def build_experiment_dir(self):
         if os.path.exists(self.base_fp):
@@ -48,14 +52,20 @@ class Experiment:
         maybe_mkdir(self.base_fp, True)
         maybe_mkdir(os.path.join(self.base_fp, "dummy_dataset"), True)
 
+        # Initialize TensorBoard writer
+        if self.use_tensorboard:
+            tensorboard_dir = os.path.join(self.base_fp, "tensorboard")
+            maybe_mkdir(tensorboard_dir, True)
+            self.writer = SummaryWriter(log_dir=tensorboard_dir)
+            print(f"📊 TensorBoard logging to: {tensorboard_dir}")
+            print(f"   Run: tensorboard --logdir={tensorboard_dir}")
+
     def run(self):
         # for i in range(3):
         #     self.algo.visualize()
         #     plt.show()
 
         for e in range(self.epochs):
-            self.algo.update(self.steps_per_epoch)
-
             if e == 0:
                 self.build_experiment_dir()
 
@@ -68,16 +78,24 @@ class Experiment:
                 # src_fp = os.path.join(self.algo.expert_dataset.root_fp, self.algo.expert_dataset.dpt_fps[0])
                 # dst_fp = os.path.join(self.base_fp, "dummy_dataset", "traj_0.pt")
                 # torch.save(torch.load(src_fp, weights_only=False), dst_fp)
-                
+
                 #save params
                 with open(os.path.join(self.base_fp, "_params.yaml"), "w") as fp:
                     yaml.dump(self.params, fp, default_flow_style=False)
+
+            # Pass tensorboard writer to algo
+            self.algo.update(self.steps_per_epoch, epoch=e, writer=self.writer)
 
             if e % self.save_every == 0:
                 torch.save(
                     self.algo.network.state_dict(),
                     os.path.join(self.base_fp, "itr_{}.pt".format(e + 1)),
                 )
+
+        # Close TensorBoard writer
+        if self.writer is not None:
+            self.writer.close()
+            print("📊 TensorBoard logs saved")
 
         for i in range(10):
             self.algo.visualize()

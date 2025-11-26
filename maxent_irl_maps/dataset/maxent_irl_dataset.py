@@ -4,7 +4,7 @@ import torch
 import numpy as np
 
 from tartandriver_perception_infra.dataset.dataset import PerceptionDataset
-
+import pdb
 class MaxEntIRLDataset(PerceptionDataset):
     """
     Wrapper around base perception dataset that:
@@ -38,8 +38,14 @@ class MaxEntIRLDataset(PerceptionDataset):
         for i, rdir in enumerate(self.rdirs):
             odom_data = torch.tensor(np.loadtxt(os.path.join(rdir, odom_dl['dir'], 'data.txt')))
             idxs = self.idx_hash[self.idx_hash[:, 0] == i]
-
-            assert odom_data.shape[0] == (idxs.shape[0] + odom_dl['tsample'].shape[0])
+            
+            
+            
+            if odom_data.shape[0] != (idxs.shape[0] + odom_dl['tsample'].shape[0]):
+                print(odom_data.shape[0],idxs.shape[0] ,odom_dl['tsample'].shape[0])
+                print(rdir)
+                pdb.set_trace()
+            #assert odom_data.shape[0] == (idxs.shape[0] + odom_dl['tsample'].shape[0])
 
             H = odom_dl['tsample'].shape[0]
             N = idxs.shape[0]

@@ -1,8 +1,8 @@
 ---
 common:
     B: 1           #number of optimizations to run in parallel
-    H: 100         #number of timesteps to roll out
-   # H: 100
+    # H: 150         #number of timesteps to roll out
+    H: 75
     M: 2           #dim of action space
     dt: 0.2        #length of timestep
     device: cuda    #device to run on 
@@ -11,7 +11,6 @@ common:
 model:
     type: SkidSteer
     args:
-        #v_lim: [0, 0.8]
         v_lim: [0, 0.8]
         w_lim: [-0.3, 0.3]
 
@@ -24,20 +23,12 @@ sampling_strategies:
           label: action_library
           args:
             K: 100
-            
-            #path: "/home/tartandriver/tartandriver_ws/src/control/torch_mpc/data/action_libraries/yamaha_atv/H75_throttle_steer_unif.pt"
-            #path: "/home/tartandriver/tartandriver_ws/src/control/torch_mpc/data/action_libraries/yamaha_atv/H300_throttle_steer_unif.pt"
-            #path: "/home/tartandriver/tartandriver_ws/src/control/torch_mpc/data/action_libraries/wheelchair/H75_K100_avoidance_curves.pt"
-            #path: "/home/tartandriver/tartandriver_ws/src/control/torch_mpc/data/action_libraries/wheelchair/H150_K100_avoidance_curves.pt"
-            #path: "/home/tartandriver/tartandriver_ws/src/control/torch_mpc/data/action_libraries/wheelchair/H300_K100_avoidance_curves.pt"
-            path: "/home/tartandriver/tartandriver_ws/src/control/torch_mpc/data/action_libraries/wheelchair/H300_K500_avoidance_curves.pt"
-            #path: "/home/tartandriver/tartandriver_ws/src/control/torch_mpc/data/action_libraries/wheelchair/H150_K100_vel_omega_unif.pt"
-            #K: 225
-            #path: "/home/tartandriver/tartandriver_ws/src/control/torch_mpc/data/action_libraries/wheelchair/H300_K225_vel_omega_unif.pt"
+            # path: "/home/tartandriver/tartandriver_ws/src/control/torch_mpc/data/action_libraries/yamaha_atv/H75_throttle_steer_unif.pt"
+            path: "/home/tartandriver/tartandriver_ws/src/control/torch_mpc/data/action_libraries/yamaha_atv/H300_throttle_steer_unif.pt"
 
 #        - type: UniformGaussian
 #          label: gaussian_unif
-#          argsc:
+#          args:
 #            K: 512
 #            scale: [1.0, 0.2]
 
@@ -53,11 +44,11 @@ sampling_strategies:
         - type: GaussianWalk
           label: gaussian_walk
           args:
-            K: 100
+            K: 512
             initial_distribution:
                 type: gaussian
                 scale: [0.5, 0.0]
-            alpha: [0.5, 0.5]   #low-pass on noise
+            alpha: [1.0, 1.0]   #low-pass on noise
             scale: [0.05, 0.05]  #sample scale on change of noise
 
 cost_function:
@@ -68,7 +59,7 @@ cost_function:
         width: 1.0
 
         #displacement to get to the center of the footprint from the center of the rear axle
-        length_offset: -1.0
+        length_offset: -0.0
         width_offset: 0.0
 
         nl: 5
@@ -135,7 +126,7 @@ cost_function:
         - type: EuclideanDistanceToGoal
           label: dist_to_goal
           goal_key: waypoints
-          weight: 50.0
+          weight: 10.0
           args:
               goal_radius: 2.0
 
@@ -173,6 +164,6 @@ ros:
 update_rule:
     type: MPPI
     args:
-        temperature: 0.3
+        temperature: 0.1
         
 recovery_behavior: []
